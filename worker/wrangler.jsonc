@@ -1,0 +1,21 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "rain-alert-worker",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-04-11",
+  "triggers": {
+    "crons": ["0 5 * * *"]
+  },
+  "secrets": {
+    "required": [
+      "TELEGRAM_BOT_TOKEN",
+      "OPENWEATHER_API_KEY",
+      "GCP_SERVICE_ACCOUNT_EMAIL",
+      "GCP_SERVICE_ACCOUNT_PRIVATE_KEY",
+      "FIREBASE_WEB_API_KEY"
+    ]
+  },
+  "vars": {
+    "FRONTEND_ORIGIN": "https://onderstudio.github.io"
+  }
+}

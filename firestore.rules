@@ -1,0 +1,97 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isNonEmptyString(field, maxLen) {
+      return field is string
+        && field.size() > 0
+        && field.size() <= maxLen;
+    }
+
+    function isValidHour(hour) {
+      return hour is int && hour >= 0 && hour <= 23;
+    }
+
+    function isValidMinute(minute) {
+      return minute is int && minute >= 0 && minute <= 59;
+    }
+
+    function isValidLat(lat) {
+      return lat is number && lat >= -90 && lat <= 90;
+    }
+
+    function isValidLon(lon) {
+      return lon is number && lon >= -180 && lon <= 180;
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+
+      allow create: if isOwner(userId)
+        && request.resource.data.uid == request.auth.uid
+        && isNonEmptyString(request.resource.data.email, 200)
+        && request.resource.data.displayName is string
+        && request.resource.data.telegramChatId is string;
+
+      allow update: if isOwner(userId)
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.displayName is string
+        && request.resource.data.telegramChatId is string;
+
+      allow delete: if false;
+    }
+
+    match /automations/{automationId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.type == "rain_alert"
+        && request.resource.data.channel == "telegram"
+        && request.resource.data.isActive is bool
+        && isNonEmptyString(request.resource.data.title, 120)
+        && isNonEmptyString(request.resource.data.cityLabel, 120)
+        && isValidLat(request.resource.data.lat)
+        && isValidLon(request.resource.data.lon)
+        && isValidHour(request.resource.data.hour)
+        && isValidMinute(request.resource.data.minute);
+
+      allow update: if isSignedIn()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.type == resource.data.type
+        && request.resource.data.channel == resource.data.channel
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.isActive is bool
+        && isNonEmptyString(request.resource.data.title, 120)
+        && isNonEmptyString(request.resource.data.cityLabel, 120)
+        && isValidLat(request.resource.data.lat)
+        && isValidLon(request.resource.data.lon)
+        && isValidHour(request.resource.data.hour)
+        && isValidMinute(request.resource.data.minute);
+
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    match /test_requests/{requestId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.type == "telegram_test"
+        && request.resource.data.status == "pending";
+
+      allow update, delete: if false;
+    }
+  }
+}

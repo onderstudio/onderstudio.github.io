@@ -5,3 +5,8 @@ dist
 .env.development.local
 .env.production.local
 .DS_Store
+
+worker/.dev.vars
+worker/.env
+worker/.env*
+worker/.dev.vars*
