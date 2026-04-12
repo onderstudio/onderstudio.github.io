@@ -4,7 +4,7 @@ export interface Env {
   GCP_SERVICE_ACCOUNT_EMAIL: string
   GCP_SERVICE_ACCOUNT_PRIVATE_KEY: string
   FIREBASE_WEB_API_KEY: string
-  FRONTEND_ORIGIN: string
+  ALLOWED_ORIGINS: string
 }
 
 type FirestoreValue =
@@ -28,33 +28,53 @@ const FIRESTORE_SCOPE = "https://www.googleapis.com/auth/datastore"
 
 let cachedAccessToken: { token: string; expiresAt: number } | null = null
 
-function corsHeaders(env: Env) {
-  return {
-    "Access-Control-Allow-Origin": env.FRONTEND_ORIGIN,
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
-  }
+function getAllowedOrigin(request: Request, env: Env) {
+  const origin = request.headers.get("Origin") ?? ""
+  const allowedOrigins = env.ALLOWED_ORIGINS
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+
+  return allowedOrigins.includes(origin) ? origin : ""
 }
 
-function jsonResponse(env: Env, data: unknown, status = 200) {
+function corsHeaders(request: Request, env: Env) {
+  const allowedOrigin = getAllowedOrigin(request, env)
+  const requestHeaders =
+    request.headers.get("Access-Control-Request-Headers") ?? "Content-Type, Authorization"
+
+  const headers: Record<string, string> = {
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": requestHeaders,
+    "Access-Control-Max-Age": "86400",
+    "Vary": "Origin",
+  }
+
+  if (allowedOrigin) {
+    headers["Access-Control-Allow-Origin"] = allowedOrigin
+  }
+
+  return headers
+}
+
+function jsonResponse(request: Request, env: Env, data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
       "content-type": "application/json",
-      ...corsHeaders(env),
+      ...corsHeaders(request, env),
     },
   })
 }
 
-function textResponse(env: Env, text: string, status = 200) {
+function textResponse(request: Request, env: Env, text: string, status = 200) {
   return new Response(text, {
     status,
     headers: {
-      ...corsHeaders(env),
+      ...corsHeaders(request, env),
     },
   })
 }
-
 function getString(
   fields: Record<string, FirestoreValue> | undefined,
   key: string,
@@ -353,7 +373,7 @@ export default {
     if (request.method === "OPTIONS") {
       return new Response(null, {
         status: 204,
-        headers: corsHeaders(env),
+        headers: corsHeaders(request, env),
       })
     }
 
@@ -361,15 +381,15 @@ export default {
       const q = url.searchParams.get("q")?.trim() ?? ""
 
       if (q.length < 2) {
-        return jsonResponse(env, [])
+        return jsonResponse(request, env, [])
       }
 
       try {
         const results = await searchLocations(q, env.OPENWEATHER_API_KEY)
-        return jsonResponse(env, results)
+        return jsonResponse(request, env, results)
       } catch (error) {
         const message = error instanceof Error ? error.message : "Bilinmeyen hata"
-        return textResponse(env, message, 500)
+        return textResponse(request, env, message, 500)
       }
     }
 
@@ -381,7 +401,7 @@ export default {
           : ""
 
         if (!idToken) {
-          return textResponse(env, "Unauthorized", 401)
+          return textResponse(request, env, "Unauthorized", 401)
         }
 
         const authUser = await verifyFirebaseIdToken(env, idToken)
@@ -389,7 +409,7 @@ export default {
         const chatId = getString(userDoc.fields, "telegramChatId")
 
         if (!chatId) {
-          return textResponse(env, "Telegram chat id kayıtlı değil.", 400)
+          return textResponse(request, env, "Telegram chat id kayıtlı değil.", 400)
         }
 
         await sendTelegramMessage(
@@ -398,14 +418,14 @@ export default {
           "Test başarılı. Butondan gönderilen mesaj çalışıyor. ☔",
         )
 
-        return textResponse(env, "Test mesajı gönderildi.", 200)
+        return textResponse(request, env, "Test mesajı gönderildi.", 200)
       } catch (error) {
         const message = error instanceof Error ? error.message : "Bilinmeyen hata"
-        return textResponse(env, message, 500)
+        return textResponse(request, env, message, 500)
       }
     }
 
-    return textResponse(env, "Rain alert worker is running.")
+    return textResponse(request, env, "Rain alert worker is running.")
   },
 
   async scheduled(_controller: ScheduledController, env: Env): Promise<void> {

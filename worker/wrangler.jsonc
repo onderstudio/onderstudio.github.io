@@ -16,6 +16,6 @@
     ]
   },
   "vars": {
-    "FRONTEND_ORIGIN": "https://onderstudio.github.io"
+    "ALLOWED_ORIGINS": "http://localhost:5173,http://127.0.0.1:5173,https://onderstudio.github.io"
   }
 }
