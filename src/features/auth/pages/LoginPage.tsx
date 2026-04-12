@@ -1,4 +1,5 @@
-import { FormEvent, useState } from "react"
+import { useState } from "react"
+import type { FormEvent } from "react"
 import { loginWithEmail, registerWithEmail } from "../services/authService"
 
 type AuthMode = "login" | "register"
