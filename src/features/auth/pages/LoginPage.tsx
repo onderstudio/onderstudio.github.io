@@ -1,19 +1,13 @@
 import { useState } from "react"
-import type { FormEvent } from "react"
-import { loginWithEmail, registerWithEmail } from "../services/authService"
-
-type AuthMode = "login" | "register"
+import { loginWithEmail } from "../services/authService"
 
 export default function LoginPage() {
-  const [mode, setMode] = useState<AuthMode>("login")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
-  const isLogin = mode === "login"
-
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError("")
 
@@ -22,19 +16,9 @@ export default function LoginPage() {
       return
     }
 
-    if (!isLogin && password.length < 6) {
-      setError("Şifre en az 6 karakter olmalı.")
-      return
-    }
-
     try {
       setLoading(true)
-
-      if (isLogin) {
-        await loginWithEmail(email, password)
-      } else {
-        await registerWithEmail(email, password)
-      }
+      await loginWithEmail(email, password)
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : "Bir hata oluştu. Lütfen tekrar dene."
@@ -47,25 +31,8 @@ export default function LoginPage() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <h2>{isLogin ? "Giriş Yap" : "Kayıt Ol"}</h2>
+        <h2>Giriş Yap</h2>
         <p>Kişisel hava ve otomasyon paneline hoş geldin.</p>
-
-        <div className="auth-switch">
-          <button
-            type="button"
-            className={isLogin ? "tab-button active" : "tab-button"}
-            onClick={() => setMode("login")}
-          >
-            Giriş
-          </button>
-          <button
-            type="button"
-            className={!isLogin ? "tab-button active" : "tab-button"}
-            onClick={() => setMode("register")}
-          >
-            Kayıt
-          </button>
-        </div>
 
         <form onSubmit={handleSubmit} className="auth-form">
           <label>
@@ -86,18 +53,14 @@ export default function LoginPage() {
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              autoComplete={isLogin ? "current-password" : "new-password"}
+              autoComplete="current-password"
             />
           </label>
 
           {error ? <div className="error-box">{error}</div> : null}
 
           <button type="submit" disabled={loading}>
-            {loading
-              ? "İşleniyor..."
-              : isLogin
-                ? "Giriş Yap"
-                : "Kayıt Oluştur"}
+            {loading ? "İşleniyor..." : "Giriş Yap"}
           </button>
         </form>
       </div>
